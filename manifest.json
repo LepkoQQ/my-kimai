@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "My Kimai",
+  "description": "Improvements for Kimai time tracking tool.",
+  "version": "0.0.1",
+  "icons": {
+    "64": "icons/icon.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.mozilla.org/*"
+      ],
+      "js": [
+        "content_script.js"
+      ]
+    }
+  ],
+  "action": {
+    "default_icon": {
+      "64": "icons/icon.png"
+    },
+    "default_popup": "popup/index.html",
+    "default_title": "My Kimai"
+  }
+}

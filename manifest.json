@@ -1,5 +1,13 @@
 {
   "manifest_version": 3,
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "@my-kimai.lepko",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
+    }
+  },
   "name": "My Kimai",
   "description": "Improvements for Kimai time tracking tool.",
   "version": "1.0.0",

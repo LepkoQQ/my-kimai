@@ -25,9 +25,10 @@ async function registerDomain(pattern) {
     {
       id,
       matches: [pattern],
-      js: ["content.js"],
       runAt: "document_start",
       persistAcrossSessions: true,
+      js: ["content.js"],
+      world: "MAIN",
     },
   ]);
 
@@ -36,6 +37,7 @@ async function registerDomain(pattern) {
     await chrome.scripting.executeScript({
       target: { tabId: currentTab.id },
       files: ["content.js"],
+      world: "MAIN",
     });
   }
 }

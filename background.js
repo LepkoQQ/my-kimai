@@ -64,3 +64,15 @@ chrome.permissions.onRemoved.addListener(async (permissions) => {
     await unregisterDomain(pattern);
   }
 });
+
+async function reconcileRegisteredScripts() {
+  const permissions = await chrome.permissions.getAll();
+  const patterns = permissions.origins || [];
+  for (const pattern of patterns) {
+    await registerDomain(pattern);
+  }
+}
+
+// in development permissions persist, but registered content scripts do not,
+// so we need to re-register them on startup
+reconcileRegisteredScripts();

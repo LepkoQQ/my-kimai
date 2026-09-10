@@ -334,6 +334,16 @@ class MyKimaiExt {
       const displayDuration = sumDurations(durationStrs);
       const prevDurationEl = getPrevDurationEl(prevTR);
       prevDurationEl.textContent = displayDuration;
+
+      const infoButton = document.createElement("i");
+      infoButton.classList.add("fas", "fa-info-circle", "small", "me-2");
+      infoButton.style.cursor = "pointer";
+      infoButton.addEventListener("click", () => {
+        this.warn(
+          "Total could be incomplete as it only includes times visible on this page!",
+        );
+      });
+      prevDurationEl.parentElement.insertBefore(infoButton, prevDurationEl);
     }
 
     clearTimeout(this._addDateHeadersTimeout);

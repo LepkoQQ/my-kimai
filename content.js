@@ -90,7 +90,7 @@ class MyKimaiExt {
         order: 0;
       }
       table.dataTable .col_date {
-        display: none;
+        width: 100px;
       }
       table.dataTable .col_starttime,
       table.dataTable .col_endtime,
@@ -292,6 +292,20 @@ class MyKimaiExt {
     }
 
     const table = document.querySelector(".dataTable");
+
+    const sortedFields = Array.from(
+      table.querySelectorAll(
+        "thead th.sortable:is(.sorting_desc, .sorting_asc)",
+      ),
+    ).map((col) => col.dataset.field);
+    if (
+      sortedFields.length !== 2 ||
+      !sortedFields.includes("starttime") ||
+      !sortedFields.includes("date")
+    ) {
+      return;
+    }
+
     const trs = table.querySelectorAll("tbody tr");
 
     let prevDate = null;
@@ -345,6 +359,10 @@ class MyKimaiExt {
       });
       prevDurationEl.parentElement.insertBefore(infoButton, prevDurationEl);
     }
+
+    table.querySelectorAll(".col_date").forEach((col) => {
+      col.style.display = "none";
+    });
 
     clearTimeout(this._addDateHeadersTimeout);
     this._addDateHeadersTimeout = setTimeout(() => {

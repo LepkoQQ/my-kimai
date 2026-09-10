@@ -39,6 +39,16 @@ class MyKimaiExt {
     this.dtcv = kimai.getPlugin("datatable-column-visibility");
     this.date = kimai.getPlugin("date");
 
+    this.injectTimesheet();
+    this.injectReportingUser();
+  }
+
+  injectTimesheet() {
+    const regex = /\/[^\/]{2}\/timesheet\//;
+    if (!window.location.pathname.match(regex)) {
+      return;
+    }
+
     this.addStyles();
     this.adjustSettings();
 
@@ -48,6 +58,16 @@ class MyKimaiExt {
       this.addActionButtons();
       this.addDateHeaders();
     });
+  }
+
+  injectReportingUser() {
+    const regex = /\/[^\/]{2}\/reporting\/user\/(week|month|year)/;
+    if (!window.location.pathname.match(regex)) {
+      return;
+    }
+
+    this.addStylesReporting();
+    this.filterReportingTable();
   }
 
   async addStyles() {
@@ -320,5 +340,55 @@ class MyKimaiExt {
     this._addDateHeadersTimeout = setTimeout(() => {
       this.addDateHeaders();
     }, 30000);
+  }
+
+  addStylesReporting() {
+    const styleSheet = new CSSStyleSheet();
+    styleSheet.replaceSync(`
+      table.dataTable .activity {
+        --tblr-table-bg-state: hsl(from var(--tblr-bg-surface) h s calc(l - 2));
+
+        td {
+          padding-block: 8px;
+          font-size: 12px;
+          opacity: 0.75;
+
+          .label-activity .badge {
+            display: none;
+          }
+        }
+      }
+    `);
+    document.adoptedStyleSheets.push(styleSheet);
+  }
+
+  filterReportingTable() {
+    const table = document.querySelector(".dataTable");
+    const trs = table.querySelectorAll("tbody tr");
+
+    for (const tr of trs) {
+      if (tr.classList.contains("activity")) {
+        tr.style.display = "none";
+      }
+    }
+
+    const btnList = document.querySelector(".form-reporting .btn-list");
+    let hideActivityBtn = btnList.querySelector(".mykimai-hide-activity");
+    if (!hideActivityBtn) {
+      hideActivityBtn = document.createElement("button");
+      hideActivityBtn.type = "button";
+      hideActivityBtn.classList.add("mykimai-hide-activity", "btn");
+      hideActivityBtn.innerHTML =
+        '<i class="fas fa-eye-slash me-2"></i> Toggle activities';
+      btnList.appendChild(hideActivityBtn);
+    }
+
+    hideActivityBtn.addEventListener("click", () => {
+      for (const tr of trs) {
+        if (tr.classList.contains("activity")) {
+          tr.style.display = tr.style.display === "none" ? "" : "none";
+        }
+      }
+    });
   }
 }

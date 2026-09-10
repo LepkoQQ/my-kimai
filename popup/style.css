@@ -40,32 +40,25 @@ body {
     align-items: center;
     padding: 0.5rem 0.5rem;
     border-radius: 0.25rem;
-    border: 1px solid #666;
+    border: 1px solid #777;
     font-size: 0.875rem;
 
     &::before {
       flex-shrink: 0;
       margin-right: 0.5rem;
-    }
-
-    &.no-access {
-      border-color: #f66;
-
-      &::before {
-        content: "🔴";
-      }
+      content: "❔";
     }
 
     &.granted {
-      border-color: #4a5;
+      border-color: #484;
 
       &::before {
-        content: "🟢";
+        content: "✅";
       }
     }
 
     &.error {
-      border-color: #f00;
+      border-color: #844;
 
       &::before {
         content: "❌";
@@ -75,7 +68,6 @@ body {
 
   .permission-button {
     flex-shrink: 0;
-    display: none;
     padding: 0.5rem 1rem;
     border-radius: 0.25rem;
     background-color: #444;
@@ -84,13 +76,9 @@ body {
     font-size: 0.875rem;
     cursor: pointer;
 
-    &.visible {
-      display: block;
-    }
-
     &:disabled {
-      cursor: wait;
       opacity: 0.5;
+      cursor: default;
     }
 
     &:not(:disabled):hover {

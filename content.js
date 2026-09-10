@@ -39,6 +39,7 @@ class MyKimaiExt {
     this.dtcv = kimai.getPlugin("datatable-column-visibility");
     this.date = kimai.getPlugin("date");
 
+    this.addStyles();
     this.adjustSettings();
 
     this.addActionButtons();
@@ -47,6 +48,92 @@ class MyKimaiExt {
       this.addActionButtons();
       this.addDateHeaders();
     });
+  }
+
+  async addStyles() {
+    const styleSheet = new CSSStyleSheet();
+    await styleSheet.replace(`
+      :root {
+        margin-left: 0;
+      }
+      table.dataTable tr {
+        display: flex;
+        flex-wrap: wrap;
+      }
+      table.dataTable tr > * {
+        flex: 0 0 auto;
+      }
+      table.dataTable tr th.multiCheckbox {
+        width: 44px; /* fix header checkbox */
+      }
+      table.dataTable .col_id {
+        order: 0;
+      }
+      table.dataTable .col_date {
+        display: none;
+      }
+      table.dataTable .col_starttime,
+      table.dataTable .col_endtime,
+      table.dataTable .col_duration {
+        width: 60px;
+        order: 3;
+      }
+      table.dataTable th.col_starttime,
+      table.dataTable th.col_endtime,
+      table.dataTable th.col_duration {
+        font-size: 0px;
+        text-align: right !important;
+      }
+      table.dataTable .col_duration .duration,
+      table.dataTable tr.mykimai-day-summary th.mykimai-duration .duration {
+        display: inline-block;
+        margin-block: -4px;
+        font-weight: 700;
+        font-size: 16px;
+      }
+      table.dataTable .col_project,
+      table.dataTable .col_activity {
+        width: 220px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        order: 2;
+      }
+      table.dataTable .col_activity {
+        width: 150px;
+      }
+      table.dataTable .col_activity .label-activity {
+        opacity: 0.5;
+        font-size: 12px;
+
+        .badge {
+          display: none;
+        }
+      }
+      table.dataTable .col_description {
+        flex-grow: 1;
+        order: 1;
+      }
+      table.dataTable .col_actions {
+        display: flex !important;
+        gap: 10px;
+        width: 60px;
+        order: 3;
+      }
+      table.dataTable tr.summary.info {
+        display: none;
+      }
+      table.dataTable tr.mykimai-day-summary th,
+      table.dataTable tr.mykimai-day-summary:hover th {
+        padding-block: 0.625rem 0.5rem;
+        background: var(--tblr-body-bg);
+        box-shadow: none;
+      }
+      table.dataTable tr.mykimai-day-summary th.mykimai-date {
+        flex: 1;
+      }
+    `);
+    document.adoptedStyleSheets.push(styleSheet);
   }
 
   warn(message) {

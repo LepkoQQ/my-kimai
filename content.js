@@ -52,11 +52,20 @@ class MyKimaiExt {
     this.addStyles();
     this.adjustSettings();
 
-    this.addActionButtons();
-    this.addDateHeaders();
-    document.addEventListener("kimai.reloadedContent", (event) => {
+    const onTimer = () => {
       this.addActionButtons();
       this.addDateHeaders();
+      this.addWeekHeaders();
+
+      clearTimeout(this._injectTimesheetTimeout);
+      this._injectTimesheetTimeout = setTimeout(() => {
+        onTimer();
+      }, 30000);
+    };
+
+    onTimer();
+    document.addEventListener("kimai.reloadedContent", (event) => {
+      onTimer();
     });
   }
 
@@ -105,7 +114,8 @@ class MyKimaiExt {
         text-align: right !important;
       }
       table.dataTable .col_duration .duration,
-      table.dataTable tr.mykimai-day-summary th.mykimai-duration .duration {
+      table.dataTable tr.mykimai-day-summary th.mykimai-duration .duration,
+      table.dataTable tr.mykimai-week-summary th.mykimai-duration .duration {
         display: inline-block;
         margin-block: -4px;
         font-weight: 700;
@@ -144,12 +154,19 @@ class MyKimaiExt {
         display: none;
       }
       table.dataTable tr.mykimai-day-summary th,
-      table.dataTable tr.mykimai-day-summary:hover th {
+      table.dataTable tr.mykimai-day-summary:hover th,
+      table.dataTable tr.mykimai-week-summary th,
+      table.dataTable tr.mykimai-week-summary:hover th {
         padding-block: 0.625rem 0.5rem;
-        background: var(--tblr-body-bg);
+        background: hsl(from var(--tblr-body-bg) h s calc(l + 2));
         box-shadow: none;
       }
-      table.dataTable tr.mykimai-day-summary th.mykimai-date {
+      table.dataTable tr.mykimai-week-summary th,
+      table.dataTable tr.mykimai-week-summary:hover th {
+        background: hsl(from var(--tblr-body-bg) h s l);
+      }
+      table.dataTable tr.mykimai-day-summary th.mykimai-date,
+      table.dataTable tr.mykimai-week-summary th.mykimai-week {
         flex: 1;
       }
     `);
@@ -234,34 +251,69 @@ class MyKimaiExt {
     }
   }
 
+  _sumDurations(strs) {
+    const total = strs
+      .map((d) => {
+        const [h, m] = d.split(":").map((s) => Number.parseInt(s, 10));
+        if (h < 0) {
+          return Temporal.Duration.from({ minutes: 0 });
+        }
+        return Temporal.Duration.from({ hours: h, minutes: m });
+      })
+      .reduce((acc, curr) => {
+        return acc.add(curr);
+      }, new Temporal.Duration());
+    return total
+      .round({ smallestUnit: "minutes", largestUnit: "hours" })
+      .toLocaleString("en-US", {
+        style: "digital",
+        hoursDisplay: "always",
+        minutesDisplay: "always",
+        secondsDisplay: "auto",
+      });
+  }
+
+  _getPrevDurationEl(prevTR) {
+    let prevDurationEl = prevTR.querySelector(".mykimai-duration .duration");
+    if (!prevDurationEl) {
+      const lastDurationTH = document.createElement("th");
+      lastDurationTH.classList.add("mykimai-duration");
+      prevTR.appendChild(lastDurationTH);
+      prevDurationEl = document.createElement("span");
+      prevDurationEl.classList.add("duration");
+      lastDurationTH.appendChild(prevDurationEl);
+    }
+    return prevDurationEl;
+  }
+
+  _addIncompleteInfoButton(prevDurationEl) {
+    const parentEl = prevDurationEl.parentElement;
+    let infoButton = parentEl.querySelector(".fa-triangle-exclamation");
+    if (!infoButton) {
+      infoButton = document.createElement("i");
+      infoButton.classList.add(
+        "fas",
+        "fa-triangle-exclamation",
+        "small",
+        "me-2",
+        "text-warning",
+      );
+      infoButton.style.cursor = "pointer";
+      infoButton.addEventListener("click", () => {
+        this.warn(
+          "Total could be incomplete as it only includes times visible on this page!",
+        );
+      });
+      parentEl.insertBefore(infoButton, prevDurationEl);
+    }
+  }
+
   addDateHeaders() {
     if (!this.date) {
       return;
     }
 
     const lang = this.kimai.getConfiguration().get("language");
-
-    function sumDurations(strs) {
-      const total = strs
-        .map((d) => {
-          const [h, m] = d.split(":").map((s) => Number.parseInt(s, 10));
-          if (h < 0) {
-            return Temporal.Duration.from({ minutes: 0 });
-          }
-          return Temporal.Duration.from({ hours: h, minutes: m });
-        })
-        .reduce((acc, curr) => {
-          return acc.add(curr);
-        }, new Temporal.Duration());
-      return total
-        .round({ smallestUnit: "minutes", largestUnit: "hours" })
-        .toLocaleString("en-US", {
-          style: "digital",
-          hoursDisplay: "always",
-          minutesDisplay: "always",
-          secondsDisplay: "auto",
-        });
-    }
 
     function getDaySummaryTR(tr, date) {
       let daySummaryTR = tr.parentElement.querySelector(
@@ -276,19 +328,6 @@ class MyKimaiExt {
       }
       tr.parentElement.insertBefore(daySummaryTR, tr);
       return daySummaryTR;
-    }
-
-    function getPrevDurationEl(prevTR) {
-      let prevDurationEl = prevTR.querySelector(".mykimai-duration .duration");
-      if (!prevDurationEl) {
-        const lastDurationTH = document.createElement("th");
-        lastDurationTH.classList.add("mykimai-duration");
-        prevTR.appendChild(lastDurationTH);
-        prevDurationEl = document.createElement("span");
-        prevDurationEl.classList.add("duration");
-        lastDurationTH.appendChild(prevDurationEl);
-      }
-      return prevDurationEl;
     }
 
     const table = document.querySelector(".dataTable");
@@ -332,8 +371,8 @@ class MyKimaiExt {
         if (prevTR) {
           const newDurationStrs = [durationStrs.pop()];
 
-          const displayDuration = sumDurations(durationStrs);
-          const prevDurationEl = getPrevDurationEl(prevTR);
+          const displayDuration = this._sumDurations(durationStrs);
+          const prevDurationEl = this._getPrevDurationEl(prevTR);
           prevDurationEl.textContent = displayDuration;
 
           durationStrs = newDurationStrs;
@@ -345,29 +384,99 @@ class MyKimaiExt {
     }
 
     if (prevTR) {
-      const displayDuration = sumDurations(durationStrs);
-      const prevDurationEl = getPrevDurationEl(prevTR);
+      const displayDuration = this._sumDurations(durationStrs);
+      const prevDurationEl = this._getPrevDurationEl(prevTR);
       prevDurationEl.textContent = displayDuration;
-
-      const infoButton = document.createElement("i");
-      infoButton.classList.add("fas", "fa-info-circle", "small", "me-2");
-      infoButton.style.cursor = "pointer";
-      infoButton.addEventListener("click", () => {
-        this.warn(
-          "Total could be incomplete as it only includes times visible on this page!",
-        );
-      });
-      prevDurationEl.parentElement.insertBefore(infoButton, prevDurationEl);
+      this._addIncompleteInfoButton(prevDurationEl);
     }
 
     table.querySelectorAll(".col_date").forEach((col) => {
       col.style.display = "none";
     });
+  }
 
-    clearTimeout(this._addDateHeadersTimeout);
-    this._addDateHeadersTimeout = setTimeout(() => {
-      this.addDateHeaders();
-    }, 30000);
+  addWeekHeaders() {
+    if (!this.date) {
+      return;
+    }
+
+    const lang = this.kimai.getConfiguration().get("language");
+
+    function formatWeekDisplay(week) {
+      let weekLabel = new Intl.DisplayNames(lang, {
+        type: "dateTimeField",
+      }).of("weekOfYear");
+      weekLabel = weekLabel[0].toUpperCase() + weekLabel.slice(1);
+      return `${weekLabel} ${week}`;
+    }
+
+    function getWeekSummaryTR(tr, week) {
+      let weekSummaryTR = tr.parentElement.querySelector(
+        `.mykimai-week-summary[data-week="${week}"]`,
+      );
+      if (!weekSummaryTR) {
+        weekSummaryTR = document.createElement("tr");
+        weekSummaryTR.classList.add("mykimai-week-summary");
+        weekSummaryTR.dataset.week = week;
+        const displayWeek = formatWeekDisplay(week);
+        weekSummaryTR.innerHTML = `<th class="mykimai-week">${displayWeek}</th>`;
+      }
+      if (
+        tr.previousElementSibling &&
+        tr.previousElementSibling.classList.contains("mykimai-day-summary")
+      ) {
+        tr = tr.previousElementSibling;
+      }
+      tr.parentElement.insertBefore(weekSummaryTR, tr);
+      return weekSummaryTR;
+    }
+
+    const table = document.querySelector(".dataTable");
+    const trs = table.querySelectorAll("tbody tr");
+
+    let prevWeek = null;
+    let prevTR = null;
+    let durationStrs = [];
+
+    for (const tr of trs) {
+      const dateCol = tr.querySelector(".col_date");
+      const durationEl = tr.querySelector(".col_duration .duration");
+      if (!dateCol || !durationEl) {
+        continue;
+      }
+
+      const durationStr = durationEl.textContent;
+      durationStrs.push(durationStr);
+
+      const dateStr = dateCol.textContent.trim();
+      const luxonDate = this.date.fromFormat(dateStr, this.date.dateFormat);
+      const date = Temporal.PlainDate.from(luxonDate);
+      const week = date.weekOfYear;
+
+      if (prevWeek !== week) {
+        const weekSummaryTR = getWeekSummaryTR(tr, week);
+
+        if (prevTR) {
+          const newDurationStrs = [durationStrs.pop()];
+
+          const displayDuration = this._sumDurations(durationStrs);
+          const prevDurationEl = this._getPrevDurationEl(prevTR);
+          prevDurationEl.textContent = displayDuration;
+
+          durationStrs = newDurationStrs;
+        }
+
+        prevWeek = week;
+        prevTR = weekSummaryTR;
+      }
+    }
+
+    if (prevTR) {
+      const displayDuration = this._sumDurations(durationStrs);
+      const prevDurationEl = this._getPrevDurationEl(prevTR);
+      prevDurationEl.textContent = displayDuration;
+      this._addIncompleteInfoButton(prevDurationEl);
+    }
   }
 
   addStylesReporting() {

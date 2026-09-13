@@ -326,8 +326,10 @@ class MyKimaiExt {
         daySummaryTR = document.createElement("tr");
         daySummaryTR.classList.add("mykimai-day-summary");
         daySummaryTR.dataset.date = date.toString();
-        const displayDate = date.toLocaleString(lang, { dateStyle: "full" });
-        daySummaryTR.innerHTML = `<th class="mykimai-date">${displayDate}</th>`;
+        const th = document.createElement("th");
+        th.classList.add("mykimai-date");
+        daySummaryTR.appendChild(th);
+        th.textContent = date.toLocaleString(lang, { dateStyle: "full" });
       }
       tr.parentElement.insertBefore(daySummaryTR, tr);
       return daySummaryTR;
@@ -421,8 +423,11 @@ class MyKimaiExt {
         weekSummaryTR = document.createElement("tr");
         weekSummaryTR.classList.add("mykimai-week-summary");
         weekSummaryTR.dataset.week = week;
+        const th = document.createElement("th");
+        th.classList.add("mykimai-week");
+        weekSummaryTR.appendChild(th);
         const displayWeek = formatWeekDisplay(week);
-        weekSummaryTR.innerHTML = `<th class="mykimai-week">${displayWeek}</th>`;
+        th.textContent = displayWeek;
       }
       if (
         tr.previousElementSibling &&

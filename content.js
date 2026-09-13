@@ -38,9 +38,12 @@ class MyKimaiExt {
     this.alert = kimai.getPlugin("alert");
     this.dtcv = kimai.getPlugin("datatable-column-visibility");
     this.date = kimai.getPlugin("date");
+    this.modal = kimai.getPlugin("modal");
+    this.api = kimai.getPlugin("api");
 
     this.injectTimesheet();
     this.injectReportingUser();
+    this.injectTimesheetEditForm();
   }
 
   injectTimesheet() {
@@ -524,6 +527,95 @@ class MyKimaiExt {
       for (const tr of trs) {
         if (tr.classList.contains("activity")) {
           tr.style.display = tr.style.display === "none" ? "" : "none";
+        }
+      }
+    });
+  }
+
+  _watchForTimesheetEditForm() {
+    const injectedForms = new WeakSet();
+
+    const checkForForm = () => {
+      const forms = document.querySelectorAll(
+        'form[name="timesheet_edit_form"]',
+      );
+      for (const form of forms) {
+        if (!injectedForms.has(form)) {
+          injectedForms.add(form);
+
+          this.addLastEndTimeButton(form);
+          this.fixTimeFormatOnEnter(form);
+        }
+      }
+    };
+
+    const observer = new MutationObserver(checkForForm);
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    checkForForm();
+  }
+
+  injectTimesheetEditForm() {
+    this._watchForTimesheetEditForm();
+  }
+
+  addLastEndTimeButton(form) {
+    if (!this.modal || !this.api) {
+      return;
+    }
+
+    const onClick = (event) => {
+      event.preventDefault();
+      const linkTarget = event.currentTarget;
+      const formElement = document.getElementById(linkTarget.dataset.target);
+      if (!formElement.disabled) {
+        this.api.get(
+          "/api/timesheets",
+          { active: 0, order: "DESC", orderBy: "begin" },
+          (timesheets) => {
+            let lastEndTime = timesheets[0].end;
+            formElement.value = this.date.format(
+              linkTarget.dataset.format,
+              lastEndTime,
+            );
+            formElement.dispatchEvent(new Event("change", { bubbles: true }));
+            formElement.dispatchEvent(new Event("keyup", { bubbles: true }));
+          },
+        );
+      }
+    };
+
+    function addButton(input) {
+      const nowLink = input.previousElementSibling;
+      const linkClone = nowLink.cloneNode(true);
+      linkClone.innerHTML = '<i class="fas fa-arrow-left-rotate"></i>';
+      linkClone.dataset.formWidget = "date-last-end-time";
+      nowLink.parentNode.insertBefore(linkClone, input);
+      linkClone.addEventListener("click", onClick);
+    }
+
+    [
+      "#timesheet_edit_form_begin_time",
+      "#timesheet_edit_form_end_time",
+    ].forEach((selector) => {
+      const input = form.querySelector(selector);
+      if (input) {
+        addButton(input);
+      }
+    });
+  }
+
+  fixTimeFormatOnEnter(form) {
+    if (!this.modal) {
+      return;
+    }
+
+    const submitButton = form.querySelector("#form_modal_save");
+    form.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && document.activeElement) {
+        document.activeElement.blur();
+        if (submitButton) {
+          submitButton.click();
         }
       }
     });
